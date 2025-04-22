@@ -20,6 +20,9 @@ Asteroids::Asteroids(int argc, char *argv[])
 {
 	mLevel = 0;
 	mAsteroidCount = 0;
+
+	// Set initial state to menu
+	currentState = MENU;
 }
 
 /** Destructor. */
@@ -30,7 +33,7 @@ Asteroids::~Asteroids(void)
 // PUBLIC INSTANCE METHODS ////////////////////////////////////////////////////
 
 /** Start an asteroids game. */
-void Asteroids::Start()
+/*void Asteroids::Start()
 {
 	// Create a shared pointer for the Asteroids game object - DO NOT REMOVE
 	shared_ptr<Asteroids> thisPtr = shared_ptr<Asteroids>(this);
@@ -74,7 +77,45 @@ void Asteroids::Start()
 
 	// Start the game
 	GameSession::Start();
+}*/
+
+void Asteroids::Start()
+{
+	// Add listeners for menu input even in the menu
+	shared_ptr<Asteroids> thisPtr = shared_ptr<Asteroids>(this);
+	mGameWindow->AddKeyboardListener(thisPtr);
+	mGameWorld->AddListener(thisPtr.get());
+	
+
+	// Light, animation, and GUI setup can still happen
+	GLfloat ambient_light[] = { 1.0f, 1.0f, 1.0f, 1.0f };
+	GLfloat diffuse_light[] = { 1.0f, 1.0f, 1.0f, 1.0f };
+	glLightfv(GL_LIGHT0, GL_AMBIENT, ambient_light);
+	glLightfv(GL_LIGHT0, GL_DIFFUSE, diffuse_light);
+	glEnable(GL_LIGHT0);
+
+	AnimationManager::GetInstance().CreateAnimationFromFile("explosion", 64, 1024, 64, 64, "explosion_fs.png");
+	AnimationManager::GetInstance().CreateAnimationFromFile("asteroid1", 128, 8192, 128, 128, "asteroid1_fs.png");
+	AnimationManager::GetInstance().CreateAnimationFromFile("spaceship", 128, 128, 128, 128, "spaceship_fs.png");
+
+	CreateBackgroundAsteroids(10); // new floating asteroids
+
+	// Hide GUI elements by default for menu
+	if (mScoreLabel) mScoreLabel->SetVisible(false);
+	if (mLivesLabel) mLivesLabel->SetVisible(false);
+	if (mGameOverLabel) mGameOverLabel->SetVisible(false);
+
+	
+
+	// Game will start from menu – not here
+	GameSession::Start();
+	
+
 }
+
+
+
+
 
 /** Stop the current game. */
 void Asteroids::Stop()
@@ -84,18 +125,22 @@ void Asteroids::Stop()
 }
 
 // PUBLIC INSTANCE METHODS IMPLEMENTING IKeyboardListener /////////////////////
-
 void Asteroids::OnKeyPressed(uchar key, int x, int y)
 {
-	switch (key)
+	if (currentState == MENU)
 	{
-	case ' ':
-		mSpaceship->Shoot();
-		break;
-	default:
-		break;
+		if (key == 's' || key == 'S') {
+			StartGame(); //  start game when 's' pressed
+		}
+	}
+	else if (currentState == PLAYING)
+	{
+		if (key == ' ') {
+			mSpaceship->Shoot();
+		}
 	}
 }
+
 
 void Asteroids::OnKeyReleased(uchar key, int x, int y) {}
 
@@ -171,6 +216,38 @@ void Asteroids::OnTimer(int value)
 	}
 
 }
+void Asteroids::StartGame()
+{
+	currentState = PLAYING;
+
+	shared_ptr<Asteroids> thisPtr = shared_ptr<Asteroids>(this);
+
+	// Add game listeners
+	mGameWorld->AddListener(thisPtr.get());
+	mGameWorld->AddListener(&mScoreKeeper);
+	mScoreKeeper.AddListener(thisPtr);
+	mGameWorld->AddListener(&mPlayer);
+	mPlayer.AddListener(thisPtr);
+
+	// Reset game state
+	mScoreKeeper.ResetScore();
+	mPlayer.SetLives(3);
+	mLevel = 0;
+
+	// Create spaceship and asteroids
+	mGameWorld->AddObject(CreateSpaceship());
+	CreateAsteroids(10);
+	CreateGUI();
+
+	// Make score/lives visible once game starts
+	mScoreLabel->SetVisible(true);
+	mLivesLabel->SetVisible(true);
+
+}
+
+
+
+
 
 // PROTECTED INSTANCE METHODS /////////////////////////////////////////////////
 shared_ptr<GameObject> Asteroids::CreateSpaceship()
@@ -210,8 +287,66 @@ void Asteroids::CreateAsteroids(const uint num_asteroids)
 	}
 }
 
+void Asteroids::CreateBackgroundAsteroids(int count)
+{
+	for (int i = 0; i < count; ++i)
+	{
+		Animation* anim_ptr = AnimationManager::GetInstance().GetAnimationByName("asteroid1");
+		shared_ptr<Sprite> sprite = make_shared<Sprite>(anim_ptr->GetWidth(), anim_ptr->GetHeight(), anim_ptr);
+		sprite->SetLoopAnimation(true);
+
+		shared_ptr<GameObject> asteroid = make_shared<Asteroid>();
+		asteroid->SetSprite(sprite);
+		asteroid->SetScale(0.2f);
+
+		// Random position and gentle velocity
+		float x = (rand() % 400) - 200;
+		float y = (rand() % 400) - 200;
+		float vx = ((rand() % 10) - 5) / 20.0f;
+		float vy = ((rand() % 10) - 5) / 20.0f;
+
+		asteroid->SetPosition(GLVector3f(x, y, 0));
+		asteroid->SetVelocity(GLVector3f(vx, vy, 0));
+
+		mGameWorld->AddObject(asteroid);
+	}
+}
+
+void Asteroids::DrawMenu()
+{
+	glColor3f(1.0f, 1.0f, 1.0f); // white text
+	RenderText(250, 400, GLUT_BITMAP_HELVETICA_18, "ASTEROIDS");
+	RenderText(250, 360, GLUT_BITMAP_HELVETICA_12, "Press 'S' to Start Game");
+	RenderText(250, 330, GLUT_BITMAP_HELVETICA_12, "Press 'I' for Instructions");
+	RenderText(250, 300, GLUT_BITMAP_HELVETICA_12, "Press 'H' for High Scores");
+}
+
+
+
+
+void Asteroids::RenderText(float x, float y, void* font, const char* text)
+{
+	glRasterPos2f(x, y);
+	while (*text) {
+		glutBitmapCharacter(font, *text++);
+	}
+}
+
+void Asteroids::OnWorldUpdated(GameWorld* world)
+{
+	std::cout << "World is updating..." << std::endl;
+	// Draw the menu overlay only in MENU state
+	if (currentState == MENU) {
+		DrawMenu();
+	}
+}
+
+
+
+
 void Asteroids::CreateGUI()
 {
+	if (currentState != PLAYING) return;
 	// Add a (transparent) border around the edge of the game display
 	mGameDisplay->GetContainer()->SetBorder(GLVector2i(10, 10));
 	// Create a new GUILabel and wrap it up in a shared_ptr

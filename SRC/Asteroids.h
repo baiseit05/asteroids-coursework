@@ -14,6 +14,15 @@ class GameObject;
 class Spaceship;
 class GUILabel;
 
+// game state enum to manage which screen is being shown
+enum GameState {
+	MENU,
+	PLAYING,
+	GAME_OVER,
+	INSTRUCTIONS,
+	HIGH_SCORE
+};
+
 class Asteroids : public GameSession, public IKeyboardListener, public IGameWorldListener, public IScoreListener, public IPlayerListener
 {
 public:
@@ -22,6 +31,7 @@ public:
 
 	virtual void Start(void);
 	virtual void Stop(void);
+
 
 	// Declaration of IKeyboardListener interface ////////////////////////////////
 
@@ -40,7 +50,9 @@ public:
 
 	// Declaration of IGameWorldListener interface //////////////////////////////
 
-	void OnWorldUpdated(GameWorld* world) {}
+	
+	void OnWorldUpdated(GameWorld* world);
+
 	void OnObjectAdded(GameWorld* world, shared_ptr<GameObject> object) {}
 	void OnObjectRemoved(GameWorld* world, shared_ptr<GameObject> object);
 
@@ -56,11 +68,25 @@ private:
 	uint mLevel;
 	uint mAsteroidCount;
 
+	// Store the current game state (e.g. MENU or PLAYING)
+	GameState currentState;
+
+	void StartGame();
+
 	void ResetSpaceship();
 	shared_ptr<GameObject> CreateSpaceship();
 	void CreateGUI();
 	void CreateAsteroids(const uint num_asteroids);
+	void CreateBackgroundAsteroids(int count);
 	shared_ptr<GameObject> CreateExplosion();
+
+	// NEW DRAW METHODS FOR MENU
+
+	
+
+	
+	void DrawMenu(); // displays the text menu overlay
+	void RenderText(float x, float y, void* font, const char* text); // text drawing helper
 	
 	const static uint SHOW_GAME_OVER = 0;
 	const static uint START_NEXT_LEVEL = 1;

@@ -1,0 +1,8 @@
+﻿cl : command line  warning D9035: option 'Gm' has been deprecated and will be removed in a future release
+  main.cpp
+  Asteroids.cpp
+C:\Users\addj424\OneDrive - City, University of London\GamesTechCoursework\IN2026 Coursework Code copy\src\Asteroids.cpp(327,17): error C2084: function 'void Asteroids::OnWorldUpdated(GameWorld *)' already has a body
+      C:\Users\addj424\OneDrive - City, University of London\GamesTechCoursework\IN2026 Coursework Code copy\src\Asteroids.h(53,7):
+      see previous definition of 'Asteroids::OnWorldUpdated'
+  
+  Generating Code...
