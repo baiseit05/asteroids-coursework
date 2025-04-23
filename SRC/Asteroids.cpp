@@ -16,8 +16,10 @@
 
 /** Constructor. Takes arguments from command line, just in case. */
 Asteroids::Asteroids(int argc, char *argv[])
-	: GameSession(argc, argv)
+	: GameSession(argc, argv), mMenuDisplay(new GameDisplay(400, 400))
+
 {
+	mMenuDisplay = new GameDisplay(400, 400);
 	mLevel = 0;
 	mAsteroidCount = 0;
 
@@ -98,16 +100,20 @@ void Asteroids::Start()
 	AnimationManager::GetInstance().CreateAnimationFromFile("asteroid1", 128, 8192, 128, 128, "asteroid1_fs.png");
 	AnimationManager::GetInstance().CreateAnimationFromFile("spaceship", 128, 128, 128, 128, "spaceship_fs.png");
 
-	CreateBackgroundAsteroids(10); // new floating asteroids
+	CreateBackgroundAsteroids(10); // new floating background asteroids
 
 	// Hide GUI elements by default for menu
 	if (mScoreLabel) mScoreLabel->SetVisible(false);
 	if (mLivesLabel) mLivesLabel->SetVisible(false);
 	if (mGameOverLabel) mGameOverLabel->SetVisible(false);
 
+	mGameWindow->SetDisplay(mMenuDisplay);
 	
+	CreateMenuGUI();
 
 	// Game will start from menu – not here
+	
+
 	GameSession::Start();
 	
 
@@ -139,6 +145,12 @@ void Asteroids::OnKeyPressed(uchar key, int x, int y)
 			mSpaceship->Shoot();
 		}
 	}
+	else if (key == 'd' || key == 'D') {
+		// Toggle difficulty setting here (we’ll implement the logic in the next step)
+		difficultyEnabled = !difficultyEnabled;
+		std::cout << "Difficulty: " << (difficultyEnabled ? "Powerups Enabled" : "Powerups Disabled") << std::endl;
+	}
+
 }
 
 
@@ -218,7 +230,16 @@ void Asteroids::OnTimer(int value)
 }
 void Asteroids::StartGame()
 {
+	// Remove floating background asteroids from the menu
+	for (auto& asteroid : mBackgroundAsteroids) {
+		if (asteroid) mGameWorld->FlagForRemoval(asteroid);
+	}
+	mBackgroundAsteroids.clear();
+
+
 	currentState = PLAYING;
+	mGameWindow->SetDisplay(mGameDisplay);
+
 
 	shared_ptr<Asteroids> thisPtr = shared_ptr<Asteroids>(this);
 
@@ -229,15 +250,17 @@ void Asteroids::StartGame()
 	mGameWorld->AddListener(&mPlayer);
 	mPlayer.AddListener(thisPtr);
 
-	// Reset game state
-	mScoreKeeper.ResetScore();
-	mPlayer.SetLives(3);
-	mLevel = 0;
+	
 
 	// Create spaceship and asteroids
 	mGameWorld->AddObject(CreateSpaceship());
 	CreateAsteroids(10);
 	CreateGUI();
+
+	// Reset game state
+	mScoreKeeper.ResetScore();
+	mPlayer.SetLives(3);
+	mLevel = 0;
 
 	// Make score/lives visible once game starts
 	mScoreLabel->SetVisible(true);
@@ -287,7 +310,7 @@ void Asteroids::CreateAsteroids(const uint num_asteroids)
 	}
 }
 
-void Asteroids::CreateBackgroundAsteroids(int count)
+/*void Asteroids::CreateBackgroundAsteroids(int count)
 {
 	for (int i = 0; i < count; ++i)
 	{
@@ -311,6 +334,40 @@ void Asteroids::CreateBackgroundAsteroids(int count)
 		mGameWorld->AddObject(asteroid);
 	}
 }
+*/
+void Asteroids::CreateBackgroundAsteroids(int count)
+{
+	for (int i = 0; i < count; ++i)
+	{
+		Animation* anim_ptr = AnimationManager::GetInstance().GetAnimationByName("asteroid1");
+		if (!anim_ptr) continue; // Skip if animation not found
+
+		shared_ptr<Sprite> sprite = make_shared<Sprite>(anim_ptr->GetWidth(), anim_ptr->GetHeight(), anim_ptr);
+		sprite->SetLoopAnimation(true);
+
+		shared_ptr<GameObject> asteroid = make_shared<Asteroid>();
+		if (!asteroid) continue; // Safety check
+
+		asteroid->SetSprite(sprite);
+		asteroid->SetScale(0.2f);
+
+		float x = (rand() % 400) - 200;
+		float y = (rand() % 400) - 200;
+		float vx = ((rand() % 10) - 5) / 20.0f;
+		float vy = ((rand() % 10) - 5) / 20.0f;
+
+		asteroid->SetPosition(GLVector3f(x, y, 0));
+		asteroid->SetVelocity(GLVector3f(vx, vy, 0));
+
+		mGameWorld->AddObject(asteroid);
+
+		// Only add non-null asteroids to the tracking list
+		mBackgroundAsteroids.push_back(asteroid);
+	}
+}
+
+
+
 
 void Asteroids::DrawMenu()
 {
@@ -381,6 +438,43 @@ void Asteroids::CreateGUI()
 
 }
 
+void Asteroids::CreateMenuGUI()
+{
+	mMenuTitleLabel = make_shared<GUILabel>("ASTEROIDS");
+	mMenuTitleLabel->SetHorizontalAlignment(GUIComponent::GUI_HALIGN_CENTER);
+	mMenuTitleLabel->SetVerticalAlignment(GUIComponent::GUI_VALIGN_MIDDLE);
+	mMenuDisplay->GetContainer()->AddComponent(
+		static_pointer_cast<GUIComponent>(mMenuTitleLabel),
+		GLVector2f(0.5f, 0.7f)
+	);
+
+	mStartGameLabel = make_shared<GUILabel>("Press 'S' to Start Game");
+	mStartGameLabel->SetHorizontalAlignment(GUIComponent::GUI_HALIGN_CENTER);
+	mStartGameLabel->SetVerticalAlignment(GUIComponent::GUI_VALIGN_MIDDLE);
+	mMenuDisplay->GetContainer()->AddComponent(
+		static_pointer_cast<GUIComponent>(mStartGameLabel),
+		GLVector2f(0.5f, 0.6f)
+	);
+
+	mInstructionsLabel = make_shared<GUILabel>("Press 'I' for Instructions");
+	mInstructionsLabel->SetHorizontalAlignment(GUIComponent::GUI_HALIGN_CENTER);
+	mInstructionsLabel->SetVerticalAlignment(GUIComponent::GUI_VALIGN_MIDDLE);
+	mMenuDisplay->GetContainer()->AddComponent(
+		static_pointer_cast<GUIComponent>(mInstructionsLabel),
+		GLVector2f(0.5f, 0.5f)
+	);
+
+	mDifficultyLabel = make_shared<GUILabel>("Press 'D' to Toggle Difficulty");
+	mDifficultyLabel->SetHorizontalAlignment(GUIComponent::GUI_HALIGN_CENTER);
+	mDifficultyLabel->SetVerticalAlignment(GUIComponent::GUI_VALIGN_MIDDLE);
+	mMenuDisplay->GetContainer()->AddComponent(
+		static_pointer_cast<GUIComponent>(mDifficultyLabel),
+		GLVector2f(0.5f, 0.4f)
+	);
+
+}
+
+
 void Asteroids::OnScoreChanged(int score)
 {
 	// Format the score message using an string-based stream
@@ -393,10 +487,17 @@ void Asteroids::OnScoreChanged(int score)
 
 void Asteroids::OnPlayerKilled(int lives_left)
 {
-	shared_ptr<GameObject> explosion = CreateExplosion();
-	explosion->SetPosition(mSpaceship->GetPosition());
-	explosion->SetRotation(mSpaceship->GetRotation());
-	mGameWorld->AddObject(explosion);
+	//shared_ptr<GameObject> explosion = CreateExplosion();
+	//explosion->SetPosition(mSpaceship->GetPosition());
+	//explosion->SetRotation(mSpaceship->GetRotation());
+	//mGameWorld->AddObject(explosion);
+
+	if (mSpaceship) {
+		shared_ptr<GameObject> explosion = CreateExplosion();
+		explosion->SetPosition(mSpaceship->GetPosition());
+		explosion->SetRotation(mSpaceship->GetRotation());
+		mGameWorld->AddObject(explosion);
+	}
 
 	// Format the lives left message using an string-based stream
 	std::ostringstream msg_stream;

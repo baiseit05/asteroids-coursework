@@ -9,6 +9,7 @@
 #include "ScoreKeeper.h"
 #include "Player.h"
 #include "IPlayerListener.h"
+#include <vector>
 
 class GameObject;
 class Spaceship;
@@ -31,6 +32,8 @@ public:
 
 	virtual void Start(void);
 	virtual void Stop(void);
+	
+
 
 
 	// Declaration of IKeyboardListener interface ////////////////////////////////
@@ -64,6 +67,15 @@ private:
 	shared_ptr<GUILabel> mScoreLabel;
 	shared_ptr<GUILabel> mLivesLabel;
 	shared_ptr<GUILabel> mGameOverLabel;
+	GameDisplay* mMenuDisplay;
+	shared_ptr<GUILabel> mMenuTitleLabel;
+	shared_ptr<GUILabel> mStartGameLabel;
+	shared_ptr<GUILabel> mInstructionsLabel;
+	shared_ptr<GUILabel> mDifficultyLabel;
+
+	std::vector<shared_ptr<GameObject>> mBackgroundAsteroids;
+
+
 
 	uint mLevel;
 	uint mAsteroidCount;
@@ -76,9 +88,14 @@ private:
 	void ResetSpaceship();
 	shared_ptr<GameObject> CreateSpaceship();
 	void CreateGUI();
+	void CreateMenuGUI();
+
 	void CreateAsteroids(const uint num_asteroids);
 	void CreateBackgroundAsteroids(int count);
 	shared_ptr<GameObject> CreateExplosion();
+
+	bool difficultyEnabled = true; // default to enabled
+
 
 	// NEW DRAW METHODS FOR MENU
 
