@@ -68,15 +68,18 @@ private:
 	shared_ptr<GUILabel> mLivesLabel;
 	shared_ptr<GUILabel> mGameOverLabel;
 	GameDisplay* mMenuDisplay;
+	GameDisplay* mGameDisplay;
 	shared_ptr<GUILabel> mMenuTitleLabel;
 	shared_ptr<GUILabel> mStartGameLabel;
 	shared_ptr<GUILabel> mInstructionsLabel;
 	shared_ptr<GUILabel> mDifficultyLabel;
 	shared_ptr<GUILabel> mInstructionsTextLabel;
+	shared_ptr<GUILabel> mHighScoreLabel;
 	shared_ptr<GUILabel> mControlsLabel;
 	shared_ptr<GUILabel> mAvoidLabel;
 	shared_ptr<GUILabel> mSurviveLabel;
 	shared_ptr<GUILabel> mReturnLabel;
+
 
 
 	std::vector<shared_ptr<GameObject>> mBackgroundAsteroids;
@@ -93,6 +96,8 @@ private:
 	void SetupInputListeners();
 
 	void ShowInstructions();
+	void HideInstructionLabels();
+
 
 	void ResetSpaceship();
 	shared_ptr<GameObject> CreateSpaceship();
@@ -120,6 +125,15 @@ private:
 
 	ScoreKeeper mScoreKeeper;
 	Player mPlayer;
+
+	std::vector<std::pair<std::string, int>> mHighScores; // stores (name, score) pairs
+	std::vector<std::shared_ptr<GUILabel>> mHighScoreLabels; // GUI labels for high score entries
+
+	void ShowHighScores();
+	void HideHighScoreLabels();
+	void AddHighScore(const std::string& name, int score);
+
+
 };
 
 #endif
