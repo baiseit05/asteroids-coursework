@@ -12,6 +12,7 @@
 #include "GUILabel.h"
 #include "Explosion.h"
 
+
 // PUBLIC INSTANCE CONSTRUCTORS ///////////////////////////////////////////////
 
 /** Constructor. Takes arguments from command line, just in case. */
@@ -81,12 +82,22 @@ Asteroids::~Asteroids(void)
 	GameSession::Start();
 }*/
 
-void Asteroids::Start()
+void Asteroids::SetupInputListeners()
 {
-	// Add listeners for menu input even in the menu
 	shared_ptr<Asteroids> thisPtr = shared_ptr<Asteroids>(this);
 	mGameWindow->AddKeyboardListener(thisPtr);
 	mGameWorld->AddListener(thisPtr.get());
+}
+
+
+void Asteroids::Start()
+{
+	/* //Add listeners for menu input even in the menu
+	shared_ptr<Asteroids> thisPtr = shared_ptr<Asteroids>(this);
+	mGameWindow->AddKeyboardListener(thisPtr);
+	mGameWorld->AddListener(thisPtr.get());*/
+
+	SetupInputListeners();
 	
 
 	// Light, animation, and GUI setup can still happen
@@ -136,7 +147,36 @@ void Asteroids::OnKeyPressed(uchar key, int x, int y)
 	if (currentState == MENU)
 	{
 		if (key == 's' || key == 'S') {
-			StartGame(); //  start game when 's' pressed
+			StartGame();
+		}
+		else if (key == 'i' || key == 'I') {
+			ShowInstructions();
+		}
+		else if (key == 'd' || key == 'D') {
+			difficultyEnabled = !difficultyEnabled;
+			std::cout << "Difficulty: " << (difficultyEnabled ? "Powerups Enabled" : "Powerups Disabled") << std::endl;
+		}
+	}
+	else if (currentState == INSTRUCTIONS)
+	{
+		if (key == 'm' || key == 'M') {
+			// Go back to Menu
+			currentState = MENU;
+
+			// Hide instructions text
+			if (mInstructionsTextLabel) {
+				mInstructionsTextLabel->SetVisible(false);
+				if (mControlsLabel) mControlsLabel->SetVisible(false);
+				if (mAvoidLabel) mAvoidLabel->SetVisible(false);
+				if (mSurviveLabel) mSurviveLabel->SetVisible(false);
+				if (mReturnLabel) mReturnLabel->SetVisible(false);
+			}
+
+			// Show main menu labels again
+			if (mMenuTitleLabel) mMenuTitleLabel->SetVisible(true);
+			if (mStartGameLabel) mStartGameLabel->SetVisible(true);
+			if (mInstructionsLabel) mInstructionsLabel->SetVisible(true);
+			if (mDifficultyLabel) mDifficultyLabel->SetVisible(true);
 		}
 	}
 	else if (currentState == PLAYING)
@@ -145,13 +185,8 @@ void Asteroids::OnKeyPressed(uchar key, int x, int y)
 			mSpaceship->Shoot();
 		}
 	}
-	else if (key == 'd' || key == 'D') {
-		// Toggle difficulty setting here (we’ll implement the logic in the next step)
-		difficultyEnabled = !difficultyEnabled;
-		std::cout << "Difficulty: " << (difficultyEnabled ? "Powerups Enabled" : "Powerups Disabled") << std::endl;
-	}
-
 }
+
 
 
 void Asteroids::OnKeyReleased(uchar key, int x, int y) {}
@@ -267,6 +302,129 @@ void Asteroids::StartGame()
 	mLivesLabel->SetVisible(true);
 
 }
+
+
+
+/*void Asteroids::ShowInstructions()
+{
+	currentState = INSTRUCTIONS;
+	mGameWindow->SetDisplay(mMenuDisplay); // Keep using the menu display
+
+	// Hide menu
+	if (mMenuTitleLabel) mMenuTitleLabel->SetVisible(false);
+	if (mStartGameLabel) mStartGameLabel->SetVisible(false);
+	if (mInstructionsLabel) mInstructionsLabel->SetVisible(false);
+	if (mDifficultyLabel) mDifficultyLabel->SetVisible(false);
+
+	if (!mInstructionsTextLabel)
+	{
+		mInstructionsTextLabel = make_shared<GUILabel>("HOW TO PLAY");
+		mInstructionsTextLabel->SetHorizontalAlignment(GUIComponent::GUI_HALIGN_CENTER);
+		mInstructionsTextLabel->SetVerticalAlignment(GUIComponent::GUI_VALIGN_TOP);
+		mMenuDisplay->GetContainer()->AddComponent(
+			static_pointer_cast<GUIComponent>(mInstructionsTextLabel),
+			GLVector2f(0.5f, 0.8f)
+		);
+
+		mControlsLabel = make_shared<GUILabel>("Use arrow keys to move | Press SPACE to shoot");
+		mControlsLabel->SetHorizontalAlignment(GUIComponent::GUI_HALIGN_CENTER);
+		mControlsLabel->SetVerticalAlignment(GUIComponent::GUI_VALIGN_TOP);
+		mMenuDisplay->GetContainer()->AddComponent(
+			static_pointer_cast<GUIComponent>(mControlsLabel),
+			GLVector2f(0.5f, 0.7f)
+		);
+
+		mAvoidLabel = make_shared<GUILabel>("Avoid or destroy asteroids");
+		mAvoidLabel->SetHorizontalAlignment(GUIComponent::GUI_HALIGN_CENTER);
+		mAvoidLabel->SetVerticalAlignment(GUIComponent::GUI_VALIGN_TOP);
+		mMenuDisplay->GetContainer()->AddComponent(
+			static_pointer_cast<GUIComponent>(mAvoidLabel),
+			GLVector2f(0.5f, 0.6f)
+		);
+
+		mSurviveLabel = make_shared<GUILabel>("Survive as long as you can");
+		mSurviveLabel->SetHorizontalAlignment(GUIComponent::GUI_HALIGN_CENTER);
+		mSurviveLabel->SetVerticalAlignment(GUIComponent::GUI_VALIGN_TOP);
+		mMenuDisplay->GetContainer()->AddComponent(
+			static_pointer_cast<GUIComponent>(mSurviveLabel),
+			GLVector2f(0.5f, 0.5f)
+		);
+
+		mReturnLabel = make_shared<GUILabel>("Press 'M' to return to Menu");
+		mReturnLabel->SetHorizontalAlignment(GUIComponent::GUI_HALIGN_CENTER);
+		mReturnLabel->SetVerticalAlignment(GUIComponent::GUI_VALIGN_TOP);
+		mMenuDisplay->GetContainer()->AddComponent(
+			static_pointer_cast<GUIComponent>(mReturnLabel),
+			GLVector2f(0.5f, 0.4f)
+		);
+	}
+}*/
+
+void Asteroids::ShowInstructions()
+{
+	currentState = INSTRUCTIONS;
+	mGameWindow->SetDisplay(mMenuDisplay); // Keep using the menu display
+
+	// Hide menu
+	if (mMenuTitleLabel) mMenuTitleLabel->SetVisible(false);
+	if (mStartGameLabel) mStartGameLabel->SetVisible(false);
+	if (mInstructionsLabel) mInstructionsLabel->SetVisible(false);
+	if (mDifficultyLabel) mDifficultyLabel->SetVisible(false);
+
+	if (!mInstructionsTextLabel)
+	{
+		// Create all labels once
+		mInstructionsTextLabel = make_shared<GUILabel>("HOW TO PLAY");
+		mInstructionsTextLabel->SetHorizontalAlignment(GUIComponent::GUI_HALIGN_CENTER);
+		mInstructionsTextLabel->SetVerticalAlignment(GUIComponent::GUI_VALIGN_TOP);
+		mMenuDisplay->GetContainer()->AddComponent(
+			static_pointer_cast<GUIComponent>(mInstructionsTextLabel),
+			GLVector2f(0.5f, 0.8f)
+		);
+
+		mControlsLabel = make_shared<GUILabel>("Use arrow keys to move | Press SPACE to shoot");
+		mControlsLabel->SetHorizontalAlignment(GUIComponent::GUI_HALIGN_CENTER);
+		mControlsLabel->SetVerticalAlignment(GUIComponent::GUI_VALIGN_TOP);
+		mMenuDisplay->GetContainer()->AddComponent(
+			static_pointer_cast<GUIComponent>(mControlsLabel),
+			GLVector2f(0.5f, 0.7f)
+		);
+
+		mAvoidLabel = make_shared<GUILabel>("Avoid or destroy asteroids");
+		mAvoidLabel->SetHorizontalAlignment(GUIComponent::GUI_HALIGN_CENTER);
+		mAvoidLabel->SetVerticalAlignment(GUIComponent::GUI_VALIGN_TOP);
+		mMenuDisplay->GetContainer()->AddComponent(
+			static_pointer_cast<GUIComponent>(mAvoidLabel),
+			GLVector2f(0.5f, 0.6f)
+		);
+
+		mSurviveLabel = make_shared<GUILabel>("Survive as long as you can");
+		mSurviveLabel->SetHorizontalAlignment(GUIComponent::GUI_HALIGN_CENTER);
+		mSurviveLabel->SetVerticalAlignment(GUIComponent::GUI_VALIGN_TOP);
+		mMenuDisplay->GetContainer()->AddComponent(
+			static_pointer_cast<GUIComponent>(mSurviveLabel),
+			GLVector2f(0.5f, 0.5f)
+		);
+
+		mReturnLabel = make_shared<GUILabel>("Press 'M' to return to Menu");
+		mReturnLabel->SetHorizontalAlignment(GUIComponent::GUI_HALIGN_CENTER);
+		mReturnLabel->SetVerticalAlignment(GUIComponent::GUI_VALIGN_TOP);
+		mMenuDisplay->GetContainer()->AddComponent(
+			static_pointer_cast<GUIComponent>(mReturnLabel),
+			GLVector2f(0.5f, 0.4f)
+		);
+	}
+
+	//  make instruction labels visible when showing instructions
+	if (mInstructionsTextLabel) mInstructionsTextLabel->SetVisible(true);
+	if (mControlsLabel) mControlsLabel->SetVisible(true);
+	if (mAvoidLabel) mAvoidLabel->SetVisible(true);
+	if (mSurviveLabel) mSurviveLabel->SetVisible(true);
+	if (mReturnLabel) mReturnLabel->SetVisible(true);
+}
+
+
+
 
 
 
@@ -527,6 +685,9 @@ shared_ptr<GameObject> Asteroids::CreateExplosion()
 	explosion->Reset();
 	return explosion;
 }
+
+
+
 
 
 

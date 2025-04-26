@@ -72,6 +72,12 @@ private:
 	shared_ptr<GUILabel> mStartGameLabel;
 	shared_ptr<GUILabel> mInstructionsLabel;
 	shared_ptr<GUILabel> mDifficultyLabel;
+	shared_ptr<GUILabel> mInstructionsTextLabel;
+	shared_ptr<GUILabel> mControlsLabel;
+	shared_ptr<GUILabel> mAvoidLabel;
+	shared_ptr<GUILabel> mSurviveLabel;
+	shared_ptr<GUILabel> mReturnLabel;
+
 
 	std::vector<shared_ptr<GameObject>> mBackgroundAsteroids;
 
@@ -84,6 +90,9 @@ private:
 	GameState currentState;
 
 	void StartGame();
+	void SetupInputListeners();
+
+	void ShowInstructions();
 
 	void ResetSpaceship();
 	shared_ptr<GameObject> CreateSpaceship();
