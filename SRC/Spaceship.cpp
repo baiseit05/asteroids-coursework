@@ -38,6 +38,18 @@ void Spaceship::Update(int t)
 {
 	// Call parent update function
 	GameObject::Update(t);
+
+	// If invulnerable, decrease remaining time
+	if (mInvulnerable)
+	{
+		mInvulnTimeRemaining -= t / 1000.0f; // t is in milliseconds, convert to seconds
+
+		if (mInvulnTimeRemaining <= 0.0f)
+		{
+			mInvulnerable = false;
+			mInvulnTimeRemaining = 0.0f;
+		}
+	}
 }
 
 /** Render this spaceship. */
@@ -100,7 +112,39 @@ bool Spaceship::CollisionTest(shared_ptr<GameObject> o)
 	return mBoundingShape->CollisionTest(o->GetBoundingShape());
 }
 
-void Spaceship::OnCollision(const GameObjectList &objects)
+
+
+
+
+
+void Spaceship::OnCollision(const GameObjectList& objects)
 {
-	mWorld->FlagForRemoval(GetThisPtr());
+	if (IsInvulnerable()) {
+		// Skip collision handling if invulnerable
+		return;
+	}
+
+	for (auto obj : objects)
+	{
+		if (obj->GetType() == GameObjectType("Asteroid"))
+		{
+			// Only destroy the spaceship if hit by an asteroid
+			mWorld->FlagForRemoval(GetThisPtr());
+			break;
+		}
+		// If it's a BonusExtraLife, do nothing – let bonus handle it
+	}
+}
+
+/** Activate invulnerability for a duration (in seconds). */
+void Spaceship::SetInvulnerable(float duration)
+{
+	mInvulnerable = true;
+	mInvulnTimeRemaining = duration;
+}
+
+/** Check if spaceship is invulnerable. */
+bool Spaceship::IsInvulnerable() const
+{
+	return mInvulnerable;
 }

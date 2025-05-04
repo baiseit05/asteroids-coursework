@@ -11,7 +11,7 @@
 class Player : public IGameWorldListener
 {
 public:
-	Player() { mLives = 3; }
+	Player() { mLives = 0; }
 	virtual ~Player() {}
 
 	void OnWorldUpdated(GameWorld* world) {}
@@ -36,6 +36,14 @@ public:
 		mLives = lives;
 		FirePlayerKilled(); // Optional: refresh GUI label immediately
 	}
+	void Player::AddLife()
+	{
+		mLives=mLives+1;
+		
+
+	}
+
+
 
 
 	void FirePlayerKilled()
@@ -46,6 +54,9 @@ public:
 			(*lit)->OnPlayerKilled(mLives);
 		}
 	}
+
+	int GetLives() const { return mLives; }
+
 
 private:
 	int mLives;

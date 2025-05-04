@@ -21,7 +21,8 @@ enum GameState {
 	PLAYING,
 	GAME_OVER,
 	INSTRUCTIONS,
-	HIGH_SCORE
+	HIGH_SCORE,
+	ENTER_NAME
 };
 
 class Asteroids : public GameSession, public IKeyboardListener, public IGameWorldListener, public IScoreListener, public IPlayerListener
@@ -79,6 +80,15 @@ private:
 	shared_ptr<GUILabel> mAvoidLabel;
 	shared_ptr<GUILabel> mSurviveLabel;
 	shared_ptr<GUILabel> mReturnLabel;
+	shared_ptr<GUILabel> mEnterNameLabel;
+	shared_ptr<GUILabel> mPlayerNameLabel;
+	shared_ptr<GUILabel> mInvulnTimerLabel;
+	shared_ptr<GUILabel> mPowerupLabel;
+
+
+
+	std::string mNameInput; // stores typed characters
+
 
 
 
@@ -108,7 +118,11 @@ private:
 	void CreateBackgroundAsteroids(int count);
 	shared_ptr<GameObject> CreateExplosion();
 
-	bool difficultyEnabled = true; // default to enabled
+	shared_ptr<GameObject> CreateBonusExtraLife(); // NEW
+
+	shared_ptr<GameObject> CreateBonusInvulnerability();
+
+	bool difficultyEnabled = false; // default 
 
 
 	// NEW DRAW METHODS FOR MENU

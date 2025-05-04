@@ -24,10 +24,22 @@ bool Asteroid::CollisionTest(shared_ptr<GameObject> o)
 	if (GetType() == o->GetType()) return false;
 	if (mBoundingShape.get() == NULL) return false;
 	if (o->GetBoundingShape().get() == NULL) return false;
+	if (o->GetType() == GameObjectType("BonusExtraLife")) return false; // Ignore bonus collisions
 	return mBoundingShape->CollisionTest(o->GetBoundingShape());
 }
 
+
+
 void Asteroid::OnCollision(const GameObjectList& objects)
 {
-	mWorld->FlagForRemoval(GetThisPtr());
+	for (auto obj : objects)
+	{
+		GameObjectType type = obj->GetType();
+		if (type == GameObjectType("Spaceship") || type == GameObjectType("Bullet"))
+		{
+			mWorld->FlagForRemoval(GetThisPtr()); // Only explode if hit by spaceship or bullet
+			break;
+		}
+	}
 }
+

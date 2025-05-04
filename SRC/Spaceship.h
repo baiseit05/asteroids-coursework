@@ -15,6 +15,9 @@ public:
 
 	virtual void Update(int t);
 	virtual void Render(void);
+	
+	
+
 
 	virtual void Thrust(float t);
 	virtual void Rotate(float r);
@@ -27,12 +30,22 @@ public:
 	bool CollisionTest(shared_ptr<GameObject> o);
 	void OnCollision(const GameObjectList &objects);
 
+	void SetInvulnerable(float duration);
+	bool IsInvulnerable() const;
+
+	float GetInvulnerabilityTimeRemaining() const { return mInvulnTimeRemaining; }
+
+
+
 private:
 	float mThrust;
 
 	shared_ptr<Shape> mSpaceshipShape;
 	shared_ptr<Shape> mThrusterShape;
 	shared_ptr<Shape> mBulletShape;
+
+	bool mInvulnerable = false;
+	float mInvulnTimeRemaining = 0.0f;
 };
 
 #endif

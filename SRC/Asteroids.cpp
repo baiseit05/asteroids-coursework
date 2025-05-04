@@ -12,6 +12,11 @@
 #include "GUILabel.h"
 #include "Explosion.h"
 #include <algorithm>
+#include "ScoreKeeper.h"
+#include "BonusExtraLife.h"
+#include "BonusInvulnerability.h"
+#include <iomanip>
+
 
 
 
@@ -37,52 +42,6 @@ Asteroids::~Asteroids(void)
 
 // PUBLIC INSTANCE METHODS ////////////////////////////////////////////////////
 
-/** Start an asteroids game. */
-/*void Asteroids::Start()
-{
-	// Create a shared pointer for the Asteroids game object - DO NOT REMOVE
-	shared_ptr<Asteroids> thisPtr = shared_ptr<Asteroids>(this);
-
-	// Add this class as a listener of the game world
-	mGameWorld->AddListener(thisPtr.get());
-
-	// Add this as a listener to the world and the keyboard
-	mGameWindow->AddKeyboardListener(thisPtr);
-
-	// Add a score keeper to the game world
-	mGameWorld->AddListener(&mScoreKeeper);
-
-	// Add this class as a listener of the score keeper
-	mScoreKeeper.AddListener(thisPtr);
-
-	// Create an ambient light to show sprite textures
-	GLfloat ambient_light[] = { 1.0f, 1.0f, 1.0f, 1.0f };
-	GLfloat diffuse_light[] = { 1.0f, 1.0f, 1.0f, 1.0f };
-	glLightfv(GL_LIGHT0, GL_AMBIENT, ambient_light);
-	glLightfv(GL_LIGHT0, GL_DIFFUSE, diffuse_light);
-	glEnable(GL_LIGHT0);
-
-	Animation *explosion_anim = AnimationManager::GetInstance().CreateAnimationFromFile("explosion", 64, 1024, 64, 64, "explosion_fs.png");
-	Animation *asteroid1_anim = AnimationManager::GetInstance().CreateAnimationFromFile("asteroid1", 128, 8192, 128, 128, "asteroid1_fs.png");
-	Animation *spaceship_anim = AnimationManager::GetInstance().CreateAnimationFromFile("spaceship", 128, 128, 128, 128, "spaceship_fs.png");
-
-	// Create a spaceship and add it to the world
-	mGameWorld->AddObject(CreateSpaceship());
-	// Create some asteroids and add them to the world
-	CreateAsteroids(10);
-
-	//Create the GUI
-	CreateGUI();
-
-	// Add a player (watcher) to the game world
-	mGameWorld->AddListener(&mPlayer);
-
-	// Add this class as a listener of the player
-	mPlayer.AddListener(thisPtr);
-
-	// Start the game
-	GameSession::Start();
-}*/
 
 void Asteroids::SetupInputListeners()
 {
@@ -94,10 +53,7 @@ void Asteroids::SetupInputListeners()
 
 void Asteroids::Start()
 {
-	/* //Add listeners for menu input even in the menu
-	shared_ptr<Asteroids> thisPtr = shared_ptr<Asteroids>(this);
-	mGameWindow->AddKeyboardListener(thisPtr);
-	mGameWorld->AddListener(thisPtr.get());*/
+	
 
 	SetupInputListeners();
 	
@@ -112,6 +68,11 @@ void Asteroids::Start()
 	AnimationManager::GetInstance().CreateAnimationFromFile("explosion", 64, 1024, 64, 64, "explosion_fs.png");
 	AnimationManager::GetInstance().CreateAnimationFromFile("asteroid1", 128, 8192, 128, 128, "asteroid1_fs.png");
 	AnimationManager::GetInstance().CreateAnimationFromFile("spaceship", 128, 128, 128, 128, "spaceship_fs.png");
+	AnimationManager::GetInstance().CreateAnimationFromFile("bonus_life", 64, 1024, 64, 64, "asteroid_bonus_fs.png");
+	AnimationManager::GetInstance().CreateAnimationFromFile("bonus_invuln", 64, 1024, 64, 64, "enemy_fs.png");
+
+
+
 
 	CreateBackgroundAsteroids(10); // new floating background asteroids
 
@@ -160,7 +121,14 @@ void Asteroids::OnKeyPressed(uchar key, int x, int y)
 
 		else if (key == 'd' || key == 'D') {
 			difficultyEnabled = !difficultyEnabled;
-			std::cout << "Difficulty: " << (difficultyEnabled ? "Powerups Enabled" : "Powerups Disabled") << std::endl;
+			
+
+			// Update the on-screen difficulty label
+			if (mDifficultyLabel) {
+				std::string diffText = "Difficulty: ";
+				diffText += (difficultyEnabled ? "Powerups Enabled" : "Powerups Disabled");
+				mDifficultyLabel->SetText(diffText);
+			}
 		}
 	}
 	else if (currentState == INSTRUCTIONS)
@@ -176,6 +144,8 @@ void Asteroids::OnKeyPressed(uchar key, int x, int y)
 				if (mAvoidLabel) mAvoidLabel->SetVisible(false);
 				if (mSurviveLabel) mSurviveLabel->SetVisible(false);
 				if (mReturnLabel) mReturnLabel->SetVisible(false);
+				if (mPowerupLabel) mPowerupLabel->SetVisible(false);
+
 			}
 
 			// Show main menu labels again
@@ -192,6 +162,7 @@ void Asteroids::OnKeyPressed(uchar key, int x, int y)
 		if (key == ' ') {
 			mSpaceship->Shoot();
 		}
+
 	}
 
 	else if (currentState == HIGH_SCORE)
@@ -206,8 +177,30 @@ void Asteroids::OnKeyPressed(uchar key, int x, int y)
 			if (mStartGameLabel) mStartGameLabel->SetVisible(true);
 			if (mInstructionsLabel) mInstructionsLabel->SetVisible(true);
 			if (mDifficultyLabel) mDifficultyLabel->SetVisible(true);
+			if (mHighScoreLabel) mHighScoreLabel->SetVisible(true);
 		}
 	}
+
+	else if (currentState == ENTER_NAME)
+	{
+		if (key == 13) { // Enter key
+			int score = mScoreKeeper.GetScore();  
+			AddHighScore(mNameInput, score);      
+			ShowHighScores();
+		}
+		else if (key == 8) { // Backspace
+			if (!mNameInput.empty()) mNameInput.pop_back();
+		}
+		else {
+			mNameInput += key;
+		}
+
+		if (mPlayerNameLabel) {
+			mPlayerNameLabel->SetText(mNameInput);
+		}
+	}
+
+
 }
 
 
@@ -247,6 +240,8 @@ void Asteroids::OnSpecialKeyReleased(int key, int x, int y)
 
 // PUBLIC INSTANCE METHODS IMPLEMENTING IGameWorldListener ////////////////////
 
+
+
 void Asteroids::OnObjectRemoved(GameWorld* world, shared_ptr<GameObject> object)
 {
 	if (object->GetType() == GameObjectType("Asteroid"))
@@ -256,12 +251,28 @@ void Asteroids::OnObjectRemoved(GameWorld* world, shared_ptr<GameObject> object)
 		explosion->SetRotation(object->GetRotation());
 		mGameWorld->AddObject(explosion);
 		mAsteroidCount--;
-		if (mAsteroidCount <= 0) 
-		{ 
-			SetTimer(500, START_NEXT_LEVEL); 
+		if (mAsteroidCount <= 0)
+		{
+			SetTimer(500, START_NEXT_LEVEL);
 		}
 	}
+	else if (object->GetType() == GameObjectType("BonusExtraLife"))
+	{
+		mPlayer.AddLife();
+		std::cout << "Bonus collected! Extra life added.\n";
+
+		// Update the lives label
+		std::ostringstream msg_stream;
+		msg_stream << "Lives: " << mPlayer.GetLives();  
+		std::string lives_msg = msg_stream.str();
+		mLivesLabel->SetText(lives_msg);
+	}
+
+
 }
+
+
+
 
 // PUBLIC INSTANCE METHODS IMPLEMENTING ITimerListener ////////////////////////
 
@@ -280,10 +291,49 @@ void Asteroids::OnTimer(int value)
 		CreateAsteroids(num_asteroids);
 	}
 
+
 	if (value == SHOW_GAME_OVER)
 	{
-		mGameOverLabel->SetVisible(true);
+		mGameOverLabel->SetVisible(false);
+		currentState = ENTER_NAME;
+		mNameInput.clear();
+
+		// Hide menu options
+		if (mMenuTitleLabel) mMenuTitleLabel->SetVisible(false);
+		if (mStartGameLabel) mStartGameLabel->SetVisible(false);
+		if (mInstructionsLabel) mInstructionsLabel->SetVisible(false);
+		if (mDifficultyLabel) mDifficultyLabel->SetVisible(false);
+		if (mHighScoreLabel) mHighScoreLabel->SetVisible(false);
+
+		// Create label: "Enter Your Name:"
+		if (!mEnterNameLabel) {
+			mEnterNameLabel = make_shared<GUILabel>("Enter Your Name:");
+			mEnterNameLabel->SetHorizontalAlignment(GUIComponent::GUI_HALIGN_CENTER);
+			mEnterNameLabel->SetVerticalAlignment(GUIComponent::GUI_VALIGN_MIDDLE);
+			mMenuDisplay->GetContainer()->AddComponent(
+				static_pointer_cast<GUIComponent>(mEnterNameLabel),
+				GLVector2f(0.5f, 0.7f)
+			);
+		}
+
+		if (!mPlayerNameLabel) {
+			mPlayerNameLabel = make_shared<GUILabel>("");
+			mPlayerNameLabel->SetHorizontalAlignment(GUIComponent::GUI_HALIGN_CENTER);
+			mPlayerNameLabel->SetVerticalAlignment(GUIComponent::GUI_VALIGN_MIDDLE);
+			mMenuDisplay->GetContainer()->AddComponent(
+				static_pointer_cast<GUIComponent>(mPlayerNameLabel),
+				GLVector2f(0.5f, 0.6f)
+			);
+		}
+
+		mEnterNameLabel->SetVisible(true);
+		mPlayerNameLabel->SetVisible(true);
+
+		mGameWindow->SetDisplay(mMenuDisplay);
 	}
+
+
+
 
 }
 
@@ -304,7 +354,7 @@ void Asteroids::StartGame()
 	shared_ptr<Asteroids> thisPtr = shared_ptr<Asteroids>(this);
 
 	// Add game listeners
-	mGameWorld->AddListener(thisPtr.get());
+	//mGameWorld->AddListener(thisPtr.get());
 	mGameWorld->AddListener(&mScoreKeeper);
 	mScoreKeeper.AddListener(thisPtr);
 	mGameWorld->AddListener(&mPlayer);
@@ -323,7 +373,43 @@ void Asteroids::StartGame()
 	// Make score/lives visible once game starts
 	mScoreLabel->SetVisible(true);
 	mLivesLabel->SetVisible(true);
+
+	// Reset name input from previous game
+	mNameInput.clear();
+	if (mPlayerNameLabel) mPlayerNameLabel->SetText("");
+
+	// Spawn bonus if powerups are enabled
+	if (difficultyEnabled)
+	{
+		auto bonus = CreateBonusExtraLife();
+
+		// Set random position and velocity
+		float x = (rand() % 400) - 200;
+		float y = (rand() % 400) - 200;
+		float vx = ((rand() % 10) - 5) / 20.0f;
+		float vy = ((rand() % 10) - 5) / 20.0f;
+
+		bonus->SetPosition(GLVector3f(x, y, 0));
+		bonus->SetVelocity(GLVector3f(vx, vy, 0));
+
+		mGameWorld->AddObject(bonus);
+
+		// Invulnerability Bonus
+		auto invulnBonus = CreateBonusInvulnerability();
+		float x2 = (rand() % 400) - 200;
+		float y2 = (rand() % 400) - 200;
+		float vx2 = ((rand() % 10) - 5) / 20.0f;
+		float vy2 = ((rand() % 10) - 5) / 20.0f;
+		invulnBonus->SetPosition(GLVector3f(x2, y2, 0));
+		invulnBonus->SetVelocity(GLVector3f(vx2, vy2, 0));
+		mGameWorld->AddObject(invulnBonus);
+
+
+	}
+
 }
+
+
 
 
 
@@ -377,6 +463,15 @@ void Asteroids::ShowInstructions()
 			GLVector2f(0.5f, 0.5f)
 		);
 
+		mPowerupLabel = make_shared<GUILabel>("Power-Ups: Red = +1 Life, Green = Invulnerable for 10s");
+		mPowerupLabel->SetHorizontalAlignment(GUIComponent::GUI_HALIGN_CENTER);
+		mPowerupLabel->SetVerticalAlignment(GUIComponent::GUI_VALIGN_TOP);
+		mMenuDisplay->GetContainer()->AddComponent(
+			static_pointer_cast<GUIComponent>(mPowerupLabel),
+			GLVector2f(0.5f, 0.3f) // Below return label
+		);
+
+
 		mReturnLabel = make_shared<GUILabel>("Press 'M' to return to Menu");
 		mReturnLabel->SetHorizontalAlignment(GUIComponent::GUI_HALIGN_CENTER);
 		mReturnLabel->SetVerticalAlignment(GUIComponent::GUI_VALIGN_TOP);
@@ -391,6 +486,7 @@ void Asteroids::ShowInstructions()
 	if (mControlsLabel) mControlsLabel->SetVisible(true);
 	if (mAvoidLabel) mAvoidLabel->SetVisible(true);
 	if (mSurviveLabel) mSurviveLabel->SetVisible(true);
+	if (mPowerupLabel) mPowerupLabel->SetVisible(true);
 	if (mReturnLabel) mReturnLabel->SetVisible(true);
 }
 
@@ -400,6 +496,7 @@ void Asteroids::HideInstructionLabels()
 	if (mControlsLabel) mControlsLabel->SetVisible(false);
 	if (mAvoidLabel) mAvoidLabel->SetVisible(false);
 	if (mSurviveLabel) mSurviveLabel->SetVisible(false);
+	if (mPowerupLabel) mPowerupLabel->SetVisible(false);
 	if (mReturnLabel) mReturnLabel->SetVisible(false);
 }
 
@@ -407,6 +504,11 @@ void Asteroids::ShowHighScores()
 {
 	currentState = HIGH_SCORE;
 	mGameWindow->SetDisplay(mMenuDisplay);
+
+	// Hide name entry labels
+	if (mEnterNameLabel) mEnterNameLabel->SetVisible(false);
+	if (mPlayerNameLabel) mPlayerNameLabel->SetVisible(false);
+
 
 	// Hide main menu labels
 	if (mMenuTitleLabel) mMenuTitleLabel->SetVisible(false);
@@ -538,6 +640,9 @@ void Asteroids::CreateBackgroundAsteroids(int count)
 		sprite->SetLoopAnimation(true);
 
 		shared_ptr<GameObject> asteroid = make_shared<Asteroid>();
+		
+
+
 		if (!asteroid) continue; // Safety check
 
 		asteroid->SetSprite(sprite);
@@ -560,7 +665,7 @@ void Asteroids::CreateBackgroundAsteroids(int count)
 
 
 
-
+//this is not drawing menu
 void Asteroids::DrawMenu()
 {
 	glColor3f(1.0f, 1.0f, 1.0f); // white text
@@ -580,7 +685,7 @@ void Asteroids::RenderText(float x, float y, void* font, const char* text)
 		glutBitmapCharacter(font, *text++);
 	}
 }
-
+//this is not drawing menu
 void Asteroids::OnWorldUpdated(GameWorld* world)
 {
 	std::cout << "World is updating..." << std::endl;
@@ -615,6 +720,13 @@ void Asteroids::CreateGUI()
 	shared_ptr<GUIComponent> lives_component = static_pointer_cast<GUIComponent>(mLivesLabel);
 	mGameDisplay->GetContainer()->AddComponent(lives_component, GLVector2f(0.0f, 0.0f));
 
+	mInvulnTimerLabel = make_shared<GUILabel>("");
+	mInvulnTimerLabel->SetVerticalAlignment(GUIComponent::GUI_VALIGN_TOP);
+	shared_ptr<GUIComponent> timer_component = static_pointer_cast<GUIComponent>(mInvulnTimerLabel);
+	mGameDisplay->GetContainer()->AddComponent(timer_component, GLVector2f(0.5f, 1.0f)); // Center-top
+	mInvulnTimerLabel->SetVisible(false);
+
+
 	// Create a new GUILabel and wrap it up in a shared_ptr
 	mGameOverLabel = shared_ptr<GUILabel>(new GUILabel("GAME OVER"));
 	// Set the horizontal alignment of the label to GUI_HALIGN_CENTER
@@ -630,41 +742,6 @@ void Asteroids::CreateGUI()
 
 }
 
-/*void Asteroids::CreateMenuGUI()
-{
-	mMenuTitleLabel = make_shared<GUILabel>("ASTEROIDS");
-	mMenuTitleLabel->SetHorizontalAlignment(GUIComponent::GUI_HALIGN_CENTER);
-	mMenuTitleLabel->SetVerticalAlignment(GUIComponent::GUI_VALIGN_MIDDLE);
-	mMenuDisplay->GetContainer()->AddComponent(
-		static_pointer_cast<GUIComponent>(mMenuTitleLabel),
-		GLVector2f(0.5f, 0.7f)
-	);
-
-	mStartGameLabel = make_shared<GUILabel>("Press 'S' to Start Game");
-	mStartGameLabel->SetHorizontalAlignment(GUIComponent::GUI_HALIGN_CENTER);
-	mStartGameLabel->SetVerticalAlignment(GUIComponent::GUI_VALIGN_MIDDLE);
-	mMenuDisplay->GetContainer()->AddComponent(
-		static_pointer_cast<GUIComponent>(mStartGameLabel),
-		GLVector2f(0.5f, 0.6f)
-	);
-
-	mInstructionsLabel = make_shared<GUILabel>("Press 'I' for Instructions");
-	mInstructionsLabel->SetHorizontalAlignment(GUIComponent::GUI_HALIGN_CENTER);
-	mInstructionsLabel->SetVerticalAlignment(GUIComponent::GUI_VALIGN_MIDDLE);
-	mMenuDisplay->GetContainer()->AddComponent(
-		static_pointer_cast<GUIComponent>(mInstructionsLabel),
-		GLVector2f(0.5f, 0.5f)
-	);
-
-	mDifficultyLabel = make_shared<GUILabel>("Press 'D' to Toggle Difficulty");
-	mDifficultyLabel->SetHorizontalAlignment(GUIComponent::GUI_HALIGN_CENTER);
-	mDifficultyLabel->SetVerticalAlignment(GUIComponent::GUI_VALIGN_MIDDLE);
-	mMenuDisplay->GetContainer()->AddComponent(
-		static_pointer_cast<GUIComponent>(mDifficultyLabel),
-		GLVector2f(0.5f, 0.4f)
-	);
-
-}*/
 
 void Asteroids::CreateMenuGUI()
 {
@@ -700,12 +777,12 @@ void Asteroids::CreateMenuGUI()
 		GLVector2f(0.5f, 0.4f)
 	);
 
-	mHighScoreLabel = make_shared<GUILabel>("Press 'H' for High Scores"); // ⬅️ NEW
+	mHighScoreLabel = make_shared<GUILabel>("Press 'H' for High Scores"); // 
 	mHighScoreLabel->SetHorizontalAlignment(GUIComponent::GUI_HALIGN_CENTER);
 	mHighScoreLabel->SetVerticalAlignment(GUIComponent::GUI_VALIGN_MIDDLE);
 	mMenuDisplay->GetContainer()->AddComponent(
 		static_pointer_cast<GUIComponent>(mHighScoreLabel),
-		GLVector2f(0.5f, 0.3f) // ⬅️ lower
+		GLVector2f(0.5f, 0.3f) // lower
 	);
 }
 
@@ -723,10 +800,6 @@ void Asteroids::OnScoreChanged(int score)
 
 void Asteroids::OnPlayerKilled(int lives_left)
 {
-	//shared_ptr<GameObject> explosion = CreateExplosion();
-	//explosion->SetPosition(mSpaceship->GetPosition());
-	//explosion->SetRotation(mSpaceship->GetRotation());
-	//mGameWorld->AddObject(explosion);
 
 	if (mSpaceship) {
 		shared_ptr<GameObject> explosion = CreateExplosion();
@@ -763,6 +836,47 @@ shared_ptr<GameObject> Asteroids::CreateExplosion()
 	explosion->Reset();
 	return explosion;
 }
+
+shared_ptr<GameObject> Asteroids::CreateBonusExtraLife()
+{
+	shared_ptr<BonusExtraLife> bonus = make_shared<BonusExtraLife>();
+
+	// Safe to use GetThisPtr() now
+	bonus->SetBoundingShape(make_shared<BoundingSphere>(bonus->GetThisPtr(), 5.0f));
+
+	Animation* anim_ptr = AnimationManager::GetInstance().GetAnimationByName("bonus_life");
+	if (anim_ptr)
+	{
+		shared_ptr<Sprite> sprite = make_shared<Sprite>(anim_ptr->GetWidth(), anim_ptr->GetHeight(), anim_ptr);
+		sprite->SetLoopAnimation(true);
+		bonus->SetSprite(sprite);
+		bonus->SetScale(0.1f);
+	}
+
+	return bonus;
+}
+
+shared_ptr<GameObject> Asteroids::CreateBonusInvulnerability()
+{
+	shared_ptr<BonusInvulnerability> bonus = make_shared<BonusInvulnerability>();
+
+	// Assign bounding shape for collision detection
+	bonus->SetBoundingShape(make_shared<BoundingSphere>(bonus->GetThisPtr(), 5.0f));
+
+	// Assign sprite and scale
+	Animation* anim_ptr = AnimationManager::GetInstance().GetAnimationByName("bonus_invuln");
+	if (anim_ptr)
+	{
+		shared_ptr<Sprite> sprite = make_shared<Sprite>(anim_ptr->GetWidth(), anim_ptr->GetHeight(), anim_ptr);
+		sprite->SetLoopAnimation(true);
+		bonus->SetSprite(sprite);
+		bonus->SetScale(0.1f);
+	}
+
+	return bonus;
+}
+
+
 
 
 
